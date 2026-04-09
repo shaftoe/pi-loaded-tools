@@ -24,6 +24,9 @@ pi install npm:@alexanderfortin/pi-loaded-tools
 pi install git:github.com/shaftoe/pi-loaded-tools
 ```
 
+> [!NOTE]
+> You might want to update `~/.pi/agent/settings.json` to ensure `pi-loaded-tools` is loaded last so to be able to show all available tools registered by other extensions too
+
 ## Usage
 
 Run `/tools` inside a pi session to see the list of loaded tools.
