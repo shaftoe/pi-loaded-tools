@@ -1,5 +1,7 @@
 # pi-loaded-tools
 
+[![codecov](https://codecov.io/gh/shaftoe/pi-loaded-tools/graph/badge.svg?token=oR4qN5fNMu)](https://codecov.io/gh/shaftoe/pi-loaded-tools)
+
 [Pi coding agent](https://pi.dev) extension to list session's loaded tools.
 
 Pi currently doesn't show this important information at startup nor elsewhere, installing this extension will show tools list at startup with active/inactive status and source labels, also prints the list on demand with `/tools` registered command.
