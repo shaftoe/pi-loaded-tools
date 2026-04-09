@@ -30,6 +30,14 @@ Run `/tools` inside a pi session to see the list of loaded tools.
 /tools    # List all loaded tools with source provenance
 ```
 
+## Releasing
+
+This project uses automated publishing to NPM via GitHub Actions. The workflow will:
+
+- Run all CI checks
+- Build the package
+- Publish to NPM with provenance (signed) via [trusted publishing](https://docs.npmjs.com/trusted-publishers)
+
 ## License
 
 See [LICENSE](./LICENSE)

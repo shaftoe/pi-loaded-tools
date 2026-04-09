@@ -29,13 +29,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run checks
-        run: bun run check
-
-      - name: Run lint
-        run: bun run lint
-
-      - name: Run format check
-        run: bun run format
+        run: bun run validate
 
       - name: Test and coverage
         run: bun run test:coverage
