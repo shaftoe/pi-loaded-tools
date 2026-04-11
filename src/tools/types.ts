@@ -23,6 +23,12 @@ export interface LoadedTool {
   /** Where this tool comes from */
   source: ToolSource;
 
+  /** Installation scope of the source */
+  scope: "user" | "project" | "temporary";
+
+  /** Whether the tool comes from a package or a top-level file */
+  origin?: "package" | "top-level";
+
   /** Extension path (for extension tools only) */
   extensionPath?: string;
 }

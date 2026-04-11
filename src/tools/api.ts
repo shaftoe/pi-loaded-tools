@@ -56,6 +56,8 @@ export function getAllLoadedTools(allTools: ToolInfo[], activeNames: Set<string>
       description: desc.trim(),
       active: activeNames.has(tool.name),
       source,
+      scope: (si?.scope as LoadedTool["scope"]) ?? "project",
+      origin: (si?.origin as LoadedTool["origin"]) ?? undefined,
       extensionPath,
     };
   });

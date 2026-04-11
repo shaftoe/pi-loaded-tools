@@ -4,11 +4,11 @@
  * Covers:
  *   - src/tools/api.ts   (getAllLoadedTools, getToolGroups, getToolStats,
  *                          formatToolSource, getSourceLabel, truncateDescription)
- *   - src/tools/display.ts (showTools)
+ *   - src/tools/display.ts (showTools, formatToolsList)
  *   - src/index.ts        (extension entry point)
  */
 
-import type { ToolInfo } from "@mariozechner/pi-coding-agent";
+import type { Theme, ToolInfo } from "@mariozechner/pi-coding-agent";
 import { describe, expect, mock, test } from "bun:test";
 import {
   formatToolSource,
@@ -18,7 +18,7 @@ import {
   getToolStats,
   truncateDescription,
 } from "../src/tools/api.js";
-import { showTools } from "../src/tools/display.js";
+import { formatToolsList, showTools } from "../src/tools/display.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -50,30 +50,38 @@ function makeTool(
 
 /** Create a minimal mock pi object. */
 function mockPi(tools: ToolInfo[] = [], active: string[] = []) {
+  const messages: Array<{
+    customType: string;
+    content: string;
+    display: boolean;
+    details: unknown;
+  }> = [];
   return {
     getAllTools: mock(() => tools),
     getActiveTools: mock(() => active),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sendMessage: mock((msg: any) => {
+      messages.push(msg);
+    }),
     registerCommand: mock(() => {}),
+    registerMessageRenderer: mock(() => {}),
     on: mock(() => {}),
+    _messages: messages,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
 
-/** Create a minimal mock ctx with a captured notify output. */
+/** Create a minimal mock ctx. */
 function mockCtx() {
-  const notifications: Array<{ message: string; type: string }> = [];
   return {
     ui: {
-      notify: mock((message: string, type: string) => {
-        notifications.push({ message, type });
-      }),
+      notify: mock(() => {}),
       theme: {
         fg: (_color: string, text: string) => `⟨${_color}⟩${text}⟨/⟩`,
         bg: (_color: string, text: string) => text,
         bold: (text: string) => `*${text}*`,
       },
     },
-    _notifications: notifications,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
@@ -95,6 +103,8 @@ describe("getAllLoadedTools", () => {
       description: "A test tool",
       active: true,
       source: "builtin",
+      scope: "temporary",
+      origin: "top-level",
       extensionPath: undefined,
     });
   });
@@ -125,6 +135,8 @@ describe("getAllLoadedTools", () => {
       description: "A test tool",
       active: true,
       source: "extension",
+      scope: "user",
+      origin: "package",
       extensionPath: "npm:@foo/tavily",
     });
   });
@@ -142,6 +154,8 @@ describe("getAllLoadedTools", () => {
       description: "A test tool",
       active: true,
       source: "extension",
+      scope: "temporary",
+      origin: "top-level",
       extensionPath: "~/git/my-ext/dist/index.js",
     });
   });
@@ -190,6 +204,31 @@ describe("getAllLoadedTools", () => {
     const [t] = getAllLoadedTools([tool], new Set());
     expect(t!.source).toBe("extension");
     expect(t!.extensionPath).toBe("/some/local/ext.js");
+  });
+
+  test("preserves project scope for extension tools", () => {
+    const tool = makeTool({
+      name: "project_tool",
+      source: "local",
+      scope: "project",
+      origin: "top-level",
+      path: ".pi/extensions/my-ext/index.ts",
+    });
+    const [t] = getAllLoadedTools([tool], new Set());
+    expect(t!.scope).toBe("project");
+  });
+
+  test("preserves user scope for extension tools", () => {
+    const tool = makeTool({
+      name: "user_tool",
+      source: "npm:@scope/pkg",
+      scope: "user",
+      origin: "package",
+      path: "npm:@scope/pkg/dist/index.js",
+    });
+    const [t] = getAllLoadedTools([tool], new Set());
+    expect(t!.scope).toBe("user");
+    expect(t!.origin).toBe("package");
   });
 
   test("returns empty array for no tools", () => {
@@ -376,11 +415,176 @@ describe("getSourceLabel", () => {
 });
 
 // ---------------------------------------------------------------------------
+// formatToolsList
+// ---------------------------------------------------------------------------
+
+describe("formatToolsList", () => {
+  const theme = {
+    fg: (_color: string, text: string) => `⟨${_color}⟩${text}⟨/⟩`,
+    bg: (_color: string, text: string) => text,
+    bold: (text: string) => `*${text}*`,
+  } as unknown as Theme;
+
+  test("renders header with mdHeading color", () => {
+    const tools = getAllLoadedTools(
+      [makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" })],
+      new Set(["bash"])
+    );
+    const output = formatToolsList(tools, theme);
+    expect(output).toContain("⟨mdHeading⟩[Tools]⟨/⟩");
+  });
+
+  test("groups builtin tools under 'builtin' scope with accent label", () => {
+    const tools = getAllLoadedTools(
+      [
+        makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" }),
+        makeTool({ name: "read", source: "builtin", path: "<builtin:read>" }),
+      ],
+      new Set(["bash", "read"])
+    );
+    const output = formatToolsList(tools, theme);
+    expect(output).toContain("⟨accent⟩builtin⟨/⟩");
+    expect(output).toContain("● bash");
+    expect(output).toContain("● read");
+  });
+
+  test("shows inactive tools with ○ prefix", () => {
+    const tools = getAllLoadedTools(
+      [makeTool({ name: "grep", source: "builtin", path: "<builtin:grep>" })],
+      new Set()
+    );
+    const output = formatToolsList(tools, theme);
+    expect(output).toContain("○ grep");
+  });
+
+  test("groups extension tools by scope", () => {
+    const tools = getAllLoadedTools(
+      [
+        makeTool({
+          name: "proj_tool",
+          source: "local",
+          scope: "project",
+          origin: "top-level",
+          path: ".pi/extensions/my-ext.ts",
+        }),
+        makeTool({
+          name: "user_tool",
+          source: "npm:@scope/pkg",
+          scope: "user",
+          origin: "package",
+          path: "npm:@scope/pkg/dist/index.js",
+        }),
+      ],
+      new Set(["proj_tool", "user_tool"])
+    );
+    const output = formatToolsList(tools, theme);
+    expect(output).toContain("⟨accent⟩project⟨/⟩");
+    expect(output).toContain("● proj_tool");
+    expect(output).toContain("⟨accent⟩user⟨/⟩");
+    expect(output).toContain("⟨mdLink⟩npm:@scope/pkg⟨/⟩");
+    expect(output).toContain("● user_tool");
+  });
+
+  test("indents package items deeper than local items", () => {
+    const tools = getAllLoadedTools(
+      [
+        makeTool({
+          name: "local_tool",
+          source: "local",
+          scope: "project",
+          origin: "top-level",
+          path: ".pi/ext.ts",
+        }),
+        makeTool({
+          name: "pkg_tool",
+          source: "npm:@s/p",
+          scope: "project",
+          origin: "package",
+          path: "npm:@s/p/dist/index.js",
+        }),
+      ],
+      new Set()
+    );
+    const output = formatToolsList(tools, theme);
+    // Local items: 4 spaces indent (    ○)
+    const localMatch = output.match(/    ○ local_tool/);
+    expect(localMatch).not.toBeNull();
+    // Package items: 6 spaces indent (      ○)
+    const pkgMatch = output.match(/      ○ pkg_tool/);
+    expect(pkgMatch).not.toBeNull();
+  });
+
+  test("shows stats line with dim color", () => {
+    const tools = getAllLoadedTools(
+      [
+        makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" }),
+        makeTool({
+          name: "ext",
+          source: "npm:@s/p",
+          scope: "user",
+          origin: "package",
+          path: "npm:@s/p/dist/index.js",
+        }),
+      ],
+      new Set(["bash"])
+    );
+    const output = formatToolsList(tools, theme);
+    expect(output).toContain("⟨dim⟩  2 tools · 1 active · 1 from extension⟨/⟩");
+  });
+
+  test("omits extension count from stats when no extension tools", () => {
+    const tools = getAllLoadedTools(
+      [makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" })],
+      new Set(["bash"])
+    );
+    const output = formatToolsList(tools, theme);
+    expect(output).toContain("1 tool · 1 active");
+    expect(output).not.toContain("from extensions");
+  });
+
+  test("handles empty tools list", () => {
+    const output = formatToolsList([], theme);
+    expect(output).toContain("⟨mdHeading⟩[Tools]⟨/⟩");
+    expect(output).toContain("0 tools · 0 active");
+  });
+
+  test("uses dim color for tool items", () => {
+    const tools = getAllLoadedTools(
+      [makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" })],
+      new Set(["bash"])
+    );
+    const output = formatToolsList(tools, theme);
+    expect(output).toContain("⟨dim⟩    ● bash⟨/⟩");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // showTools
 // ---------------------------------------------------------------------------
 
 describe("showTools", () => {
-  test("calls notify with formatted output", () => {
+  test("sends message via pi.sendMessage with correct customType and display", () => {
+    const tools = [
+      makeTool({
+        name: "bash",
+        source: "builtin",
+        path: "<builtin:bash>",
+      }),
+    ];
+    const pi = mockPi(tools, ["bash"]);
+    const ctx = mockCtx();
+
+    showTools(pi, ctx);
+
+    expect(pi.sendMessage).toHaveBeenCalledTimes(1);
+    const msg = pi._messages[0]!;
+    expect(msg.customType).toBe("pi-loaded-tools");
+    expect(msg.display).toBe(true);
+    expect(msg.content).toContain("1 tool");
+    expect(msg.content).toContain("1 active");
+  });
+
+  test("stores loaded tools in details", () => {
     const tools = [
       makeTool({
         name: "bash",
@@ -390,6 +594,7 @@ describe("showTools", () => {
       makeTool({
         name: "web_search",
         source: "npm:@foo/tavily",
+        scope: "user",
         origin: "package",
         path: "npm:@foo/tavily/dist/index.js",
       }),
@@ -399,69 +604,9 @@ describe("showTools", () => {
 
     showTools(pi, ctx);
 
-    expect(ctx._notifications).toHaveLength(1);
-    const output = ctx._notifications[0]!.message;
-    expect(ctx._notifications[0]!.type).toBe("info");
-
-    // Header
-    expect(output).toContain("[Tools]");
-
-    // Active tools
-    expect(output).toContain("● bash");
-    expect(output).toContain("[built-in]");
-    expect(output).toContain("● web_search");
-    expect(output).toContain("[npm:@foo/tavily]");
-  });
-
-  test("shows inactive tools with ○ prefix", () => {
-    const tools = [
-      makeTool({
-        name: "bash",
-        source: "builtin",
-        path: "<builtin:bash>",
-      }),
-      makeTool({
-        name: "grep",
-        source: "builtin",
-        path: "<builtin:grep>",
-      }),
-    ];
-    const pi = mockPi(tools, ["bash"]);
-    const ctx = mockCtx();
-
-    showTools(pi, ctx);
-
-    const output = ctx._notifications[0]!.message;
-    expect(output).toContain("○ grep");
-    expect(output).toContain("● bash");
-  });
-
-  test("shows only inactive tools when none are active", () => {
-    const tools = [
-      makeTool({
-        name: "bash",
-        source: "builtin",
-        path: "<builtin:bash>",
-      }),
-    ];
-    const pi = mockPi(tools, []);
-    const ctx = mockCtx();
-
-    showTools(pi, ctx);
-
-    const output = ctx._notifications[0]!.message;
-    expect(output).toContain("○ bash");
-    expect(output).not.toContain("●");
-  });
-
-  test("handles empty tools list", () => {
-    const pi = mockPi([], []);
-    const ctx = mockCtx();
-
-    showTools(pi, ctx);
-
-    const output = ctx._notifications[0]!.message;
-    expect(output).toContain("Tools]");
+    const details = pi._messages[0]!.details as { tools: Array<{ name: string }> };
+    expect(details.tools).toHaveLength(2);
+    expect(details.tools.map((t) => t.name)).toEqual(["bash", "web_search"]);
   });
 
   test("calls pi.getAllTools and pi.getActiveTools", () => {
@@ -473,14 +618,195 @@ describe("showTools", () => {
     expect(pi.getAllTools).toHaveBeenCalledTimes(1);
     expect(pi.getActiveTools).toHaveBeenCalledTimes(1);
   });
+
+  test("reports correct counts for mixed tools", () => {
+    const tools = [
+      makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" }),
+      makeTool({ name: "read", source: "builtin", path: "<builtin:read>" }),
+      makeTool({ name: "ext", source: "local", path: "~/ext.js" }),
+    ];
+    const pi = mockPi(tools, ["bash", "read"]);
+    const ctx = mockCtx();
+
+    showTools(pi, ctx);
+
+    const msg = pi._messages[0]!;
+    expect(msg.content).toContain("3 tools");
+    expect(msg.content).toContain("2 active");
+  });
 });
 
 // ---------------------------------------------------------------------------
 // Extension entry point
 // ---------------------------------------------------------------------------
 
+describe("buildToolGroups (via formatToolsList)", () => {
+  const theme = {
+    fg: (_color: string, text: string) => `⟨${_color}⟩${text}⟨/⟩`,
+    bg: (_color: string, text: string) => text,
+    bold: (text: string) => `*${text}*`,
+  } as unknown as Theme;
+
+  test("groups SDK tools under 'path' scope", () => {
+    const tools = getAllLoadedTools(
+      [makeTool({ name: "sdk_tool", source: "sdk", path: "sdk:x" })],
+      new Set(["sdk_tool"])
+    );
+    const output = formatToolsList(tools, theme);
+    expect(output).toContain("⟨accent⟩path⟨/⟩");
+    expect(output).toContain("● sdk_tool");
+  });
+
+  test("groups temporary-scope extension tools under 'path' scope", () => {
+    const tools = getAllLoadedTools(
+      [
+        makeTool({
+          name: "temp_tool",
+          source: "local",
+          scope: "temporary",
+          origin: "top-level",
+          path: "/tmp/ext.js",
+        }),
+      ],
+      new Set()
+    );
+    const output = formatToolsList(tools, theme);
+    expect(output).toContain("⟨accent⟩path⟨/⟩");
+    expect(output).toContain("○ temp_tool");
+  });
+
+  test("sorts local tools alphabetically within a group", () => {
+    const tools = getAllLoadedTools(
+      [
+        makeTool({ name: "z_tool", source: "builtin", path: "<builtin:z>" }),
+        makeTool({ name: "a_tool", source: "builtin", path: "<builtin:a>" }),
+      ],
+      new Set(["z_tool", "a_tool"])
+    );
+    const output = formatToolsList(tools, theme);
+    const aPos = output.indexOf("● a_tool");
+    const zPos = output.indexOf("● z_tool");
+    expect(aPos).toBeLessThan(zPos);
+  });
+
+  test("sorts package tools alphabetically within a package", () => {
+    const tools = getAllLoadedTools(
+      [
+        makeTool({
+          name: "z_pkg_tool",
+          source: "npm:@s/p",
+          scope: "user",
+          origin: "package",
+          path: "npm:@s/p/dist/index.js",
+        }),
+        makeTool({
+          name: "a_pkg_tool",
+          source: "npm:@s/p",
+          scope: "user",
+          origin: "package",
+          path: "npm:@s/p/dist/index.js",
+        }),
+      ],
+      new Set(["z_pkg_tool", "a_pkg_tool"])
+    );
+    const output = formatToolsList(tools, theme);
+    const aPos = output.indexOf("● a_pkg_tool");
+    const zPos = output.indexOf("● z_pkg_tool");
+    expect(aPos).toBeLessThan(zPos);
+  });
+
+  test("sorts packages alphabetically within a group", () => {
+    const tools = getAllLoadedTools(
+      [
+        makeTool({
+          name: "t1",
+          source: "npm:@z/p",
+          scope: "user",
+          origin: "package",
+          path: "npm:@z/p/dist/index.js",
+        }),
+        makeTool({
+          name: "t2",
+          source: "npm:@a/p",
+          scope: "user",
+          origin: "package",
+          path: "npm:@a/p/dist/index.js",
+        }),
+      ],
+      new Set(["t1", "t2"])
+    );
+    const output = formatToolsList(tools, theme);
+    const aPos = output.indexOf("npm:@a/p");
+    const zPos = output.indexOf("npm:@z/p");
+    expect(aPos).toBeLessThan(zPos);
+  });
+
+  test("stats line uses singular 'tool' and 'extension' for count of 1", () => {
+    const tools = getAllLoadedTools(
+      [
+        makeTool({
+          name: "ext",
+          source: "npm:@s/p",
+          scope: "user",
+          origin: "package",
+          path: "npm:@s/p/dist/index.js",
+        }),
+      ],
+      new Set(["ext"])
+    );
+    const output = formatToolsList(tools, theme);
+    expect(output).toContain("1 tool · 1 active · 1 from extension");
+    expect(output).not.toContain("1 tools");
+    expect(output).not.toContain("1 extensions");
+  });
+});
+
+describe("message renderer", () => {
+  test("renderer callback falls back to empty array when details is missing", async () => {
+    const mod = await import("../src/index.js");
+    const pi = mockPi();
+
+    mod.default(pi);
+
+    const renderer = pi.registerMessageRenderer.mock.calls[0]![1];
+    const theme = {
+      fg: (_color: string, text: string) => `⟨${_color}⟩${text}⟨/⟩`,
+      bg: (_color: string, text: string) => text,
+      bold: (text: string) => `*${text}*`,
+    } as unknown as Theme;
+
+    const result = renderer({}, undefined, theme);
+    expect(result).toBeDefined();
+    expect(result.text).toContain("[Tools]");
+    expect(result.text).toContain("0 tools");
+  });
+
+  test("renderer callback uses tools from message.details", async () => {
+    const mod = await import("../src/index.js");
+    const pi = mockPi();
+
+    mod.default(pi);
+
+    const tools = getAllLoadedTools(
+      [makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" })],
+      new Set(["bash"])
+    );
+
+    const renderer = pi.registerMessageRenderer.mock.calls[0]![1];
+    const theme = {
+      fg: (_color: string, text: string) => `⟨${_color}⟩${text}⟨/⟩`,
+      bg: (_color: string, text: string) => text,
+      bold: (text: string) => `*${text}*`,
+    } as unknown as Theme;
+
+    const result = renderer({ details: { tools } }, undefined, theme);
+    expect(result).toBeDefined();
+    expect(result.text).toContain("1 tool");
+  });
+});
+
 describe("extension entry point", () => {
-  test("registers /tools command and session_start listener", async () => {
+  test("registers /tools command, session_start listener, and message renderer", async () => {
     const mod = await import("../src/index.js");
     const pi = mockPi();
 
@@ -491,6 +817,9 @@ describe("extension entry point", () => {
 
     expect(pi.on).toHaveBeenCalledTimes(1);
     expect(pi.on.mock.calls[0]![0]).toBe("session_start");
+
+    expect(pi.registerMessageRenderer).toHaveBeenCalledTimes(1);
+    expect(pi.registerMessageRenderer.mock.calls[0]![0]).toBe("pi-loaded-tools");
   });
 
   test("command handler calls showTools", async () => {
@@ -503,8 +832,7 @@ describe("extension entry point", () => {
     const handler = pi.registerCommand.mock.calls[0]![1]!.handler;
     await handler("", ctx);
 
-    expect(pi.getAllTools).toHaveBeenCalled();
-    expect(ctx._notifications).toHaveLength(1);
+    expect(pi.sendMessage).toHaveBeenCalled();
   });
 
   test("session_start handler calls showTools", async () => {
@@ -517,7 +845,6 @@ describe("extension entry point", () => {
     const sessionHandler = pi.on.mock.calls[0]![1];
     await sessionHandler({}, ctx);
 
-    expect(pi.getAllTools).toHaveBeenCalled();
-    expect(ctx._notifications).toHaveLength(1);
+    expect(pi.sendMessage).toHaveBeenCalled();
   });
 });
