@@ -59,6 +59,7 @@
     "validate": "bun run lint && bun run format && bun run check"
   },
   "devDependencies": {
+    "@alexanderfortin/semantic-release-keep-a-changelog": "0.2.0",
     "@mariozechner/pi-ai": "0.66.1",
     "@mariozechner/pi-coding-agent": "0.66.1",
     "@mariozechner/pi-tui": "0.66.1",
