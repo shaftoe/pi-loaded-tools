@@ -761,6 +761,94 @@ describe("buildToolGroups (via formatToolsList)", () => {
   });
 });
 
+describe("formatToolsList compact mode", () => {
+  const theme = {
+    fg: (_color: string, text: string) => `⟨${_color}⟩${text}⟨/⟩`,
+    bg: (_color: string, text: string) => text,
+    bold: (text: string) => `*${text}*`,
+  } as unknown as Theme;
+
+  test("compact mode shows single-line summary with bold header", () => {
+    const tools = getAllLoadedTools(
+      [
+        makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" }),
+        makeTool({ name: "read", source: "builtin", path: "<builtin:read>" }),
+      ],
+      new Set(["bash"])
+    );
+    const output = formatToolsList(tools, theme, true);
+    expect(output).toContain("\x1b[1m[Tools]\x1b[22m");
+    expect(output).toContain("2 tools · 1 active");
+    expect(output).not.toContain("\n");
+  });
+
+  test("compact mode includes extension count", () => {
+    const tools = getAllLoadedTools(
+      [
+        makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" }),
+        makeTool({
+          name: "ext",
+          source: "npm:@s/p",
+          scope: "user",
+          origin: "package",
+          path: "npm:@s/p/dist/index.js",
+        }),
+      ],
+      new Set(["bash", "ext"])
+    );
+    const output = formatToolsList(tools, theme, true);
+    expect(output).toContain("1 from extension");
+  });
+
+  test("compact mode does not show scope groups or tool items", () => {
+    const tools = getAllLoadedTools(
+      [
+        makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" }),
+        makeTool({
+          name: "ext",
+          source: "npm:@s/p",
+          scope: "user",
+          origin: "package",
+          path: "npm:@s/p/dist/index.js",
+        }),
+      ],
+      new Set(["bash"])
+    );
+    const output = formatToolsList(tools, theme, true);
+    expect(output).not.toContain("builtin");
+    expect(output).not.toContain("●");
+    expect(output).not.toContain("○");
+  });
+
+  test("compact mode handles empty tools", () => {
+    const output = formatToolsList([], theme, true);
+    expect(output).toContain("\x1b[1m[Tools]\x1b[22m");
+    expect(output).toContain("0 tools · 0 active");
+  });
+
+  test("expanded mode (default) still works unchanged", () => {
+    const tools = getAllLoadedTools(
+      [makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" })],
+      new Set(["bash"])
+    );
+    const output = formatToolsList(tools, theme, false);
+    expect(output).toContain("⟨mdHeading⟩[Tools]⟨/⟩");
+    expect(output).toContain("⟨accent⟩builtin⟨/⟩");
+    expect(output).toContain("● bash");
+    expect(output).toContain("⟨dim⟩  1 tool · 1 active⟨/⟩");
+  });
+
+  test("compact mode default parameter is false", () => {
+    const tools = getAllLoadedTools(
+      [makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" })],
+      new Set(["bash"])
+    );
+    const defaultOutput = formatToolsList(tools, theme);
+    const explicitExpanded = formatToolsList(tools, theme, false);
+    expect(defaultOutput).toBe(explicitExpanded);
+  });
+});
+
 describe("message renderer", () => {
   test("renderer callback falls back to empty array when details is missing", async () => {
     const mod = await import("../src/index.js");
@@ -775,13 +863,13 @@ describe("message renderer", () => {
       bold: (text: string) => `*${text}*`,
     } as unknown as Theme;
 
-    const result = renderer({}, undefined, theme);
+    const result = renderer({}, { expanded: true }, theme);
     expect(result).toBeDefined();
     expect(result.text).toContain("[Tools]");
     expect(result.text).toContain("0 tools");
   });
 
-  test("renderer callback uses tools from message.details", async () => {
+  test("renderer callback uses tools from message.details (expanded)", async () => {
     const mod = await import("../src/index.js");
     const pi = mockPi();
 
@@ -799,9 +887,38 @@ describe("message renderer", () => {
       bold: (text: string) => `*${text}*`,
     } as unknown as Theme;
 
-    const result = renderer({ details: { tools } }, undefined, theme);
+    const result = renderer({ details: { tools } }, { expanded: true }, theme);
     expect(result).toBeDefined();
     expect(result.text).toContain("1 tool");
+    expect(result.text).toContain("● bash");
+  });
+
+  test("renderer shows compact mode when not expanded", async () => {
+    const mod = await import("../src/index.js");
+    const pi = mockPi();
+
+    mod.default(pi);
+
+    const tools = getAllLoadedTools(
+      [
+        makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" }),
+        makeTool({ name: "read", source: "builtin", path: "<builtin:read>" }),
+      ],
+      new Set(["bash"])
+    );
+
+    const renderer = pi.registerMessageRenderer.mock.calls[0]![1];
+    const theme = {
+      fg: (_color: string, text: string) => `⟨${_color}⟩${text}⟨/⟩`,
+      bg: (_color: string, text: string) => text,
+      bold: (text: string) => `*${text}*`,
+    } as unknown as Theme;
+
+    const result = renderer({ details: { tools } }, { expanded: false }, theme);
+    expect(result).toBeDefined();
+    expect(result.text).toContain("\x1b[1m[Tools]\x1b[22m");
+    expect(result.text).toContain("2 tools · 1 active");
+    expect(result.text).not.toContain("● bash");
   });
 });
 

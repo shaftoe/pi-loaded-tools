@@ -8,20 +8,30 @@
  * ([SectionName] headers, scope grouping, accent/dim/mdLink theme tokens)
  * via a custom message renderer, so it blends in with [Skills], [Extensions],
  * [Themes], etc.
+ *
+ * Supports Pi's compact/expanded boot layout: the tools list starts collapsed
+ * (showing only a summary line) and can be expanded with ctrl+o, matching the
+ * behaviour of built-in boot sections.
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+  MessageRenderer,
+} from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { formatToolsList, showTools, type LoadedTool } from "./tools";
 
 export default function (pi: ExtensionAPI): void {
-  pi.registerMessageRenderer<{ tools: LoadedTool[] }>(
-    "pi-loaded-tools",
-    (message, _options, theme) => {
-      const tools: LoadedTool[] = message.details?.tools ?? [];
-      return new Text(formatToolsList(tools, theme), 0, 0);
-    }
-  );
+  pi.registerMessageRenderer<{ tools: LoadedTool[] }>("pi-loaded-tools", ((
+    message: { details?: { tools: LoadedTool[] } },
+    options: { expanded: boolean },
+    theme: import("@mariozechner/pi-coding-agent").Theme
+  ) => {
+    const tools: LoadedTool[] = message.details?.tools ?? [];
+    const compact = !options?.expanded;
+    return new Text(formatToolsList(tools, theme, compact), 0, 0);
+  }) as MessageRenderer<{ tools: LoadedTool[] }>);
 
   pi.registerCommand("tools", {
     description: "List all loaded tools with source provenance and active status",
