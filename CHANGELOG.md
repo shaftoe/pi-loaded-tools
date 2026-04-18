@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `/tools off` disables startup auto-print and `/tools on` re-enables it
+
 ## [0.4.0] - 2026-04-18
 
 ### Added

@@ -6,6 +6,8 @@
 
 Pi currently doesn't show this important information at startup nor elsewhere, installing this extension will show tools list at startup with active/inactive status and source labels, also prints the list on demand with `/tools` registered command.
 
+If you prefer to keep the command but stop the startup auto-print, use `/tools off`. Use `/tools on` to enable it again.
+
 ## Example
 
 ![screenshot](./screenshot.png)
@@ -32,8 +34,12 @@ pi install git:github.com/shaftoe/pi-loaded-tools
 Run `/tools` inside a pi session to see the list of loaded tools.
 
 ```
-/tools    # List all loaded tools with source provenance
+/tools        # List all loaded tools with source provenance
+/tools off    # Disable startup auto-print
+/tools on     # Re-enable startup auto-print
 ```
+
+`/tools on|off` persists to `~/.pi/agent/settings.json` under `loadedTools.showOnStartup`.
 
 ## Releasing
 

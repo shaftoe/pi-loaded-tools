@@ -20,6 +20,7 @@ import type {
   MessageRenderer,
 } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
+import { setShowToolsOnStartup, shouldShowToolsOnStartup } from "./settings.js";
 import { formatToolsList, showTools, type LoadedTool } from "./tools";
 
 export default function (pi: ExtensionAPI): void {
@@ -34,13 +35,34 @@ export default function (pi: ExtensionAPI): void {
   }) as MessageRenderer<{ tools: LoadedTool[] }>);
 
   pi.registerCommand("tools", {
-    description: "List all loaded tools with source provenance and active status",
-    handler: async (_args: string, ctx: ExtensionContext) => {
-      await Promise.resolve(showTools(pi, ctx));
+    description: "List loaded tools or toggle startup auto-print with /tools on|off",
+    handler: async (args: string, ctx: ExtensionContext) => {
+      const command = args.trim().toLowerCase();
+
+      if (!command) {
+        await Promise.resolve(showTools(pi, ctx));
+        return;
+      }
+
+      if (command === "off" || command === "on") {
+        const enabled = command === "on";
+        const persisted = setShowToolsOnStartup(enabled);
+        const status = enabled ? "enabled" : "disabled";
+        const suffix = persisted ? "" : " (not persisted; check ~/.pi/agent/settings.json)";
+        ctx.ui.notify(
+          `Tools auto-print on startup ${status}${suffix}`,
+          persisted ? "info" : "warning"
+        );
+        return;
+      }
+
+      ctx.ui.notify("Usage: /tools [on|off]", "warning");
     },
   });
 
   pi.on("session_start", (_event, ctx: ExtensionContext) => {
-    showTools(pi, ctx);
+    if (shouldShowToolsOnStartup()) {
+      showTools(pi, ctx);
+    }
   });
 }

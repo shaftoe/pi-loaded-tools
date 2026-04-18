@@ -10,6 +10,9 @@
 
 import type { Theme, ToolInfo } from "@mariozechner/pi-coding-agent";
 import { describe, expect, mock, test } from "bun:test";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   formatToolSource,
   getAllLoadedTools,
@@ -84,6 +87,23 @@ function mockCtx() {
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
+}
+
+async function withTempHome(run: (homeDir: string) => Promise<void> | void): Promise<void> {
+  const previousHome = process.env.HOME;
+  const homeDir = mkdtempSync(join(tmpdir(), "pi-loaded-tools-"));
+  process.env.HOME = homeDir;
+
+  try {
+    await run(homeDir);
+  } finally {
+    if (previousHome === undefined) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = previousHome;
+    }
+    rmSync(homeDir, { recursive: true, force: true });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -952,6 +972,74 @@ describe("extension entry point", () => {
     expect(pi.sendMessage).toHaveBeenCalled();
   });
 
+  test("/tools off persists startup auto-print disable", async () => {
+    await withTempHome(async (homeDir) => {
+      const mod = await import("../src/index.js");
+      const pi = mockPi();
+      const ctx = mockCtx();
+
+      mod.default(pi);
+
+      const handler = pi.registerCommand.mock.calls[0]![1]!.handler;
+      await handler("off", ctx);
+
+      const settingsPath = join(homeDir, ".pi", "agent", "settings.json");
+      expect(existsSync(settingsPath)).toBe(true);
+
+      const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+      expect(settings.loadedTools.showOnStartup).toBe(false);
+      expect(pi.sendMessage).not.toHaveBeenCalled();
+      expect(ctx.ui.notify).toHaveBeenCalledWith("Tools auto-print on startup disabled", "info");
+    });
+  });
+
+  test("/tools on re-enables startup auto-print", async () => {
+    await withTempHome(async (homeDir) => {
+      const settingsPath = join(homeDir, ".pi", "agent", "settings.json");
+      mkdirSync(join(homeDir, ".pi", "agent"), { recursive: true });
+      writeFileSync(
+        settingsPath,
+        JSON.stringify({ loadedTools: { showOnStartup: false } }, null, 2)
+      );
+
+      const mod = await import("../src/index.js");
+      const pi = mockPi();
+      const ctx = mockCtx();
+
+      mod.default(pi);
+
+      const handler = pi.registerCommand.mock.calls[0]![1]!.handler;
+      await handler("on", ctx);
+
+      const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+      expect(settings.loadedTools.showOnStartup).toBe(true);
+      expect(ctx.ui.notify).toHaveBeenCalledWith("Tools auto-print on startup enabled", "info");
+    });
+  });
+
+  test("/tools off does not overwrite invalid existing settings", async () => {
+    await withTempHome(async (homeDir) => {
+      const settingsPath = join(homeDir, ".pi", "agent", "settings.json");
+      mkdirSync(join(homeDir, ".pi", "agent"), { recursive: true });
+      writeFileSync(settingsPath, "{ invalid json\n");
+
+      const mod = await import("../src/index.js");
+      const pi = mockPi();
+      const ctx = mockCtx();
+
+      mod.default(pi);
+
+      const handler = pi.registerCommand.mock.calls[0]![1]!.handler;
+      await handler("off", ctx);
+
+      expect(readFileSync(settingsPath, "utf-8")).toBe("{ invalid json\n");
+      expect(ctx.ui.notify).toHaveBeenCalledWith(
+        "Tools auto-print on startup disabled (not persisted; check ~/.pi/agent/settings.json)",
+        "warning"
+      );
+    });
+  });
+
   test("session_start handler calls showTools", async () => {
     const mod = await import("../src/index.js");
     const pi = mockPi();
@@ -963,5 +1051,26 @@ describe("extension entry point", () => {
     await sessionHandler({}, ctx);
 
     expect(pi.sendMessage).toHaveBeenCalled();
+  });
+
+  test("session_start handler skips showTools when disabled in settings", async () => {
+    await withTempHome(async (homeDir) => {
+      mkdirSync(join(homeDir, ".pi", "agent"), { recursive: true });
+      writeFileSync(
+        join(homeDir, ".pi", "agent", "settings.json"),
+        JSON.stringify({ loadedTools: { showOnStartup: false } }, null, 2)
+      );
+
+      const mod = await import("../src/index.js");
+      const pi = mockPi();
+      const ctx = mockCtx();
+
+      mod.default(pi);
+
+      const sessionHandler = pi.on.mock.calls[0]![1];
+      await sessionHandler({}, ctx);
+
+      expect(pi.sendMessage).not.toHaveBeenCalled();
+    });
   });
 });
