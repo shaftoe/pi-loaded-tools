@@ -1,9 +1,12 @@
 /**
  * Tools display logic — formats and shows loaded tools using Pi's native
  * boot-time visual style (same theme tokens, scope grouping, indentation).
+ *
+ * Supports compact (collapsed) and expanded views, toggled by ctrl+o.
  */
 
 import type { ExtensionAPI, ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
+import { keyText } from "@mariozechner/pi-coding-agent";
 import { getAllLoadedTools } from "./api.js";
 import type { LoadedTool } from "./types.js";
 
@@ -60,10 +63,27 @@ function buildToolGroups(tools: LoadedTool[]): ScopeGroup[] {
 // ---------------------------------------------------------------------------
 
 /**
+ * Build the one-line stats summary shown in both compact and expanded modes.
+ */
+function buildStatsLine(tools: LoadedTool[]): string {
+  const total = tools.length;
+  const active = tools.filter((t) => t.active).length;
+  const extCount = tools.filter((t) => t.source === "extension").length;
+  const parts = [`${total} tool${total !== 1 ? "s" : ""}`, `${active} active`];
+  if (extCount > 0) {
+    parts.push(`${extCount} from extension${extCount !== 1 ? "s" : ""}`);
+  }
+  return parts.join(" · ");
+}
+
+/**
  * Format a loaded-tools list using Pi's native boot-time visual style.
  *
- * Output structure mirrors `InteractiveMode.showLoadedResources()`:
+ * When `compact` is true, shows only the header line with counts and an
+ * expand hint (matching Pi's new default boot layout). When false (the
+ * default), shows the full listing with scope groups.
  *
+ * Expanded output:
  * ```
  * [Tools]
  *   builtin
@@ -76,8 +96,21 @@ function buildToolGroups(tools: LoadedTool[]): ScopeGroup[] {
  *       ● ext_tool
  *   14 tools · 13 active · 1 from extensions
  * ```
+ *
+ * Compact output:
+ * ```
+ * [Tools] 14 tools · 13 active · 1 from extensions (ctrl+o to expand)
+ * ```
  */
-export function formatToolsList(tools: LoadedTool[], theme: Theme): string {
+export function formatToolsList(tools: LoadedTool[], theme: Theme, compact = false): string {
+  const stats = buildStatsLine(tools);
+
+  if (compact) {
+    const expandKey = keyText("app.tools.expand");
+    const hint = expandKey ? theme.fg("dim", ` (${expandKey} to expand)`) : "";
+    return theme.fg("mdHeading", "\x1b[1m[Tools]\x1b[22m") + theme.fg("dim", ` ${stats}`) + hint;
+  }
+
   const lines: string[] = [];
   lines.push(theme.fg("mdHeading", "[Tools]"));
 
@@ -101,14 +134,7 @@ export function formatToolsList(tools: LoadedTool[], theme: Theme): string {
     }
   }
 
-  const total = tools.length;
-  const active = tools.filter((t) => t.active).length;
-  const extCount = tools.filter((t) => t.source === "extension").length;
-  const parts = [`${total} tool${total !== 1 ? "s" : ""}`, `${active} active`];
-  if (extCount > 0) {
-    parts.push(`${extCount} from extension${extCount !== 1 ? "s" : ""}`);
-  }
-  lines.push(theme.fg("dim", `  ${parts.join(" · ")}`));
+  lines.push(theme.fg("dim", `  ${stats}`));
 
   return lines.join("\n");
 }
