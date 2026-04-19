@@ -768,7 +768,7 @@ describe("formatToolsList compact mode", () => {
     bold: (text: string) => `*${text}*`,
   } as unknown as Theme;
 
-  test("compact mode shows single-line summary with bold header", () => {
+  test("compact mode shows single line listing tool names with bold header", () => {
     const tools = getAllLoadedTools(
       [
         makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" }),
@@ -778,29 +778,24 @@ describe("formatToolsList compact mode", () => {
     );
     const output = formatToolsList(tools, theme, true);
     expect(output).toContain("\x1b[1m[Tools]\x1b[22m");
-    expect(output).toContain("2 tools · 1 active");
+    expect(output).toContain("⟨dim⟩bash, read⟨/⟩");
     expect(output).not.toContain("\n");
   });
 
-  test("compact mode includes extension count", () => {
+  test("compact mode lists tool names sorted alphabetically", () => {
     const tools = getAllLoadedTools(
       [
+        makeTool({ name: "read", source: "builtin", path: "<builtin:read>" }),
         makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" }),
-        makeTool({
-          name: "ext",
-          source: "npm:@s/p",
-          scope: "user",
-          origin: "package",
-          path: "npm:@s/p/dist/index.js",
-        }),
+        makeTool({ name: "edit", source: "builtin", path: "<builtin:edit>" }),
       ],
-      new Set(["bash", "ext"])
+      new Set(["read", "bash", "edit"])
     );
     const output = formatToolsList(tools, theme, true);
-    expect(output).toContain("1 from extension");
+    expect(output).toContain("bash, edit, read");
   });
 
-  test("compact mode does not show scope groups or tool items", () => {
+  test("compact mode does not show scope groups or active indicators", () => {
     const tools = getAllLoadedTools(
       [
         makeTool({ name: "bash", source: "builtin", path: "<builtin:bash>" }),
@@ -815,7 +810,6 @@ describe("formatToolsList compact mode", () => {
       new Set(["bash"])
     );
     const output = formatToolsList(tools, theme, true);
-    expect(output).not.toContain("builtin");
     expect(output).not.toContain("●");
     expect(output).not.toContain("○");
   });
@@ -823,7 +817,7 @@ describe("formatToolsList compact mode", () => {
   test("compact mode handles empty tools", () => {
     const output = formatToolsList([], theme, true);
     expect(output).toContain("\x1b[1m[Tools]\x1b[22m");
-    expect(output).toContain("0 tools · 0 active");
+    expect(output).toContain("(none)");
   });
 
   test("expanded mode (default) still works unchanged", () => {
@@ -917,7 +911,7 @@ describe("message renderer", () => {
     const result = renderer({ details: { tools } }, { expanded: false }, theme);
     expect(result).toBeDefined();
     expect(result.text).toContain("\x1b[1m[Tools]\x1b[22m");
-    expect(result.text).toContain("2 tools · 1 active");
+    expect(result.text).toContain("bash, read");
     expect(result.text).not.toContain("● bash");
   });
 });

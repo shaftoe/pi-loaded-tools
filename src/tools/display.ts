@@ -6,7 +6,6 @@
  */
 
 import type { ExtensionAPI, ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
-import { keyText } from "@mariozechner/pi-coding-agent";
 import { getAllLoadedTools } from "./api.js";
 import type { LoadedTool } from "./types.js";
 
@@ -63,7 +62,7 @@ function buildToolGroups(tools: LoadedTool[]): ScopeGroup[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Build the one-line stats summary shown in both compact and expanded modes.
+ * Build the one-line stats summary shown in expanded mode.
  */
 function buildStatsLine(tools: LoadedTool[]): string {
   const total = tools.length;
@@ -79,9 +78,15 @@ function buildStatsLine(tools: LoadedTool[]): string {
 /**
  * Format a loaded-tools list using Pi's native boot-time visual style.
  *
- * When `compact` is true, shows only the header line with counts and an
- * expand hint (matching Pi's new default boot layout). When false (the
- * default), shows the full listing with scope groups.
+ * When `compact` is true, shows a single line listing tool names
+ * (matching Pi's default boot layout for skills/extensions). When false
+ * (the default / expanded), shows the full listing with scope groups,
+ * active indicators, and a stats summary line.
+ *
+ * Compact output:
+ * ```
+ * [Tools] bash, read, write, edit
+ * ```
  *
  * Expanded output:
  * ```
@@ -96,21 +101,15 @@ function buildStatsLine(tools: LoadedTool[]): string {
  *       ● ext_tool
  *   14 tools · 13 active · 1 from extensions
  * ```
- *
- * Compact output:
- * ```
- * [Tools] 14 tools · 13 active · 1 from extensions (ctrl+o to expand)
- * ```
  */
 export function formatToolsList(tools: LoadedTool[], theme: Theme, compact = false): string {
-  const stats = buildStatsLine(tools);
-
   if (compact) {
-    const expandKey = keyText("app.tools.expand");
-    const hint = expandKey ? theme.fg("dim", ` (${expandKey} to expand)`) : "";
-    return theme.fg("mdHeading", "\x1b[1m[Tools]\x1b[22m") + theme.fg("dim", ` ${stats}`) + hint;
+    const names = tools.map((t) => t.name).sort((a, b) => a.localeCompare(b));
+    const body = names.length > 0 ? theme.fg("dim", names.join(", ")) : theme.fg("dim", "(none)");
+    return theme.fg("mdHeading", "\x1b[1m[Tools]\x1b[22m") + " " + body;
   }
 
+  const stats = buildStatsLine(tools);
   const lines: string[] = [];
   lines.push(theme.fg("mdHeading", "[Tools]"));
 
