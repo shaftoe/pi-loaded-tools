@@ -85,7 +85,8 @@ function buildStatsLine(tools: LoadedTool[]): string {
  *
  * Compact output:
  * ```
- * [Tools] bash, read, write, edit
+ * [Tools]
+ *   bash, read, write, edit
  * ```
  *
  * Expanded output:
@@ -105,8 +106,9 @@ function buildStatsLine(tools: LoadedTool[]): string {
 export function formatToolsList(tools: LoadedTool[], theme: Theme, compact = false): string {
   if (compact) {
     const names = tools.map((t) => t.name).sort((a, b) => a.localeCompare(b));
-    const body = names.length > 0 ? theme.fg("dim", names.join(", ")) : theme.fg("dim", "(none)");
-    return theme.fg("mdHeading", "\x1b[1m[Tools]\x1b[22m") + " " + body;
+    const body =
+      names.length > 0 ? theme.fg("dim", "  " + names.join(", ")) : theme.fg("dim", "  (none)");
+    return theme.fg("mdHeading", "\x1b[1m[Tools]\x1b[22m") + "\n" + body;
   }
 
   const stats = buildStatsLine(tools);

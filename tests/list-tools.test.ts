@@ -778,8 +778,8 @@ describe("formatToolsList compact mode", () => {
     );
     const output = formatToolsList(tools, theme, true);
     expect(output).toContain("\x1b[1m[Tools]\x1b[22m");
-    expect(output).toContain("⟨dim⟩bash, read⟨/⟩");
-    expect(output).not.toContain("\n");
+    expect(output).toContain("⟨dim⟩  bash, read⟨/⟩");
+    expect(output).toContain("\n");
   });
 
   test("compact mode lists tool names sorted alphabetically", () => {
