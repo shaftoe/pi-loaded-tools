@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-04-27
+
+### Fixed
+
+- suppress tool list display on /new sessions after boot (#17)
+
 ## [0.4.2] - 2026-04-22
 
 ### Changed
@@ -57,7 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list-tools` command for displaying loaded tools with source provenance
 - Tool diagnostics including active status and validation information
 
-[unreleased]: https://github.com/shaftoe/pi-loaded-tools/compare/v0.4.2...HEAD
+[unreleased]: https://github.com/shaftoe/pi-loaded-tools/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/shaftoe/pi-loaded-tools/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/shaftoe/pi-loaded-tools/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/shaftoe/pi-loaded-tools/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/shaftoe/pi-loaded-tools/compare/v0.3.1...v0.4.0
