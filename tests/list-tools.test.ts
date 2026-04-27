@@ -946,7 +946,7 @@ describe("extension entry point", () => {
     expect(pi.sendMessage).toHaveBeenCalled();
   });
 
-  test("session_start handler calls showTools", async () => {
+  test("session_start handler calls showTools only on first invocation", async () => {
     const mod = await import("../src/index.js");
     const pi = mockPi();
     const ctx = mockCtx();
@@ -954,8 +954,13 @@ describe("extension entry point", () => {
     mod.default(pi);
 
     const sessionHandler = pi.on.mock.calls[0]![1];
-    await sessionHandler({}, ctx);
 
-    expect(pi.sendMessage).toHaveBeenCalled();
+    // First session_start (boot) — should show tools
+    await sessionHandler({}, ctx);
+    expect(pi.sendMessage).toHaveBeenCalledTimes(1);
+
+    // Second session_start (/new) — should NOT show tools
+    await sessionHandler({}, ctx);
+    expect(pi.sendMessage).toHaveBeenCalledTimes(1);
   });
 });

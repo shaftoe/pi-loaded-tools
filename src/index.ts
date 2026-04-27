@@ -39,7 +39,10 @@ export default function (pi: ExtensionAPI): void {
     },
   });
 
+  let shownAtBoot = false;
   pi.on("session_start", (_event, ctx: ExtensionContext) => {
+    if (shownAtBoot) return;
+    shownAtBoot = true;
     showTools(pi, ctx);
   });
 }
