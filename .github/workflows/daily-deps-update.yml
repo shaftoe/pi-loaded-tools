@@ -40,3 +40,4 @@ jobs:
           pr-title: "chore(deps): update dependencies"
           pr-commit-message: "chore(deps): update dependencies"
           pr-labels: "dependencies,automated"
+          post-update-run: "bun run validate && bun run test"
