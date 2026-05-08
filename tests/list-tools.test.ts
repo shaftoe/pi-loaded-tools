@@ -946,7 +946,7 @@ describe("extension entry point", () => {
     expect(pi.sendMessage).toHaveBeenCalled();
   });
 
-  test("session_start handler calls showTools only on first invocation", async () => {
+  test("session_start handler calls showTools only on startup reason", async () => {
     const mod = await import("../src/index.js");
     const pi = mockPi();
     const ctx = mockCtx();
@@ -955,12 +955,20 @@ describe("extension entry point", () => {
 
     const sessionHandler = pi.on.mock.calls[0]![1];
 
-    // First session_start (boot) — should show tools
-    await sessionHandler({}, ctx);
+    // session_start with reason "startup" — should show tools
+    await sessionHandler({ reason: "startup" }, ctx);
     expect(pi.sendMessage).toHaveBeenCalledTimes(1);
 
-    // Second session_start (/new) — should NOT show tools
-    await sessionHandler({}, ctx);
+    // session_start with reason "new" (/new) — should NOT show tools
+    await sessionHandler({ reason: "new" }, ctx);
     expect(pi.sendMessage).toHaveBeenCalledTimes(1);
+
+    // session_start with reason "resume" — should NOT show tools
+    await sessionHandler({ reason: "resume" }, ctx);
+    expect(pi.sendMessage).toHaveBeenCalledTimes(1);
+
+    // Another startup should still show tools (no stale flag)
+    await sessionHandler({ reason: "startup" }, ctx);
+    expect(pi.sendMessage).toHaveBeenCalledTimes(2);
   });
 });
