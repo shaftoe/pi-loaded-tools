@@ -14,8 +14,8 @@
  * behaviour of built-in boot sections.
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { Text } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import { formatToolsList, showTools, type LoadedTool } from "./tools";
 
 export default function (pi: ExtensionAPI): void {
@@ -24,7 +24,7 @@ export default function (pi: ExtensionAPI): void {
     (
       message: { details?: { tools: LoadedTool[] } },
       options: { expanded: boolean },
-      theme: import("@mariozechner/pi-coding-agent").Theme
+      theme: Theme
     ) => {
       const tools: LoadedTool[] = message.details?.tools ?? [];
       const compact = !options?.expanded;

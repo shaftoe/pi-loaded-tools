@@ -8,7 +8,7 @@
  *   - src/index.ts        (extension entry point)
  */
 
-import type { Theme, ToolInfo } from "@mariozechner/pi-coding-agent";
+import type { Theme, ToolInfo } from "@earendil-works/pi-coding-agent";
 import { describe, expect, mock, test } from "bun:test";
 import {
   formatToolSource,

@@ -34,9 +34,9 @@
     "LICENSE"
   ],
   "peerDependencies": {
-    "@mariozechner/pi-coding-agent": "*",
-    "@mariozechner/pi-ai": "*",
-    "@mariozechner/pi-tui": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-tui": "*",
     "@sinclair/typebox": "*"
   },
   "repository": {
@@ -60,9 +60,9 @@
   },
   "devDependencies": {
     "@alexanderfortin/semantic-release-keep-a-changelog": "0.2.1",
-    "@mariozechner/pi-ai": "0.68.1",
-    "@mariozechner/pi-coding-agent": "0.68.1",
-    "@mariozechner/pi-tui": "0.68.1",
+    "@earendil-works/pi-ai": "0.74.0",
+    "@earendil-works/pi-coding-agent": "0.74.0",
+    "@earendil-works/pi-tui": "0.74.0",
     "@semantic-release/changelog": "6.0.3",
     "@semantic-release/commit-analyzer": "13.0.1",
     "@semantic-release/exec": "7.1.0",

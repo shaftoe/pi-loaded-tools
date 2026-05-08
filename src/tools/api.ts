@@ -2,7 +2,7 @@
  * API for querying and organizing loaded tools.
  */
 
-import type { ToolInfo } from "@mariozechner/pi-coding-agent";
+import type { ToolInfo } from "@earendil-works/pi-coding-agent";
 import type { LoadedTool, ToolGroups, ToolSource, ToolStats } from "./types.js";
 
 // ---------------------------------------------------------------------------

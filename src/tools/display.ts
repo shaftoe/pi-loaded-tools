@@ -5,7 +5,7 @@
  * Supports compact (collapsed) and expanded views, toggled by ctrl+o.
  */
 
-import type { ExtensionAPI, ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import { getAllLoadedTools } from "./api.js";
 import type { LoadedTool } from "./types.js";
 
