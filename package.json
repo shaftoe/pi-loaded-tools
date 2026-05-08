@@ -1,7 +1,7 @@
 {
   "name": "@alexanderfortin/pi-loaded-tools",
   "author": "Alexander Fortin",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "Pi coding agent extension for listing loaded tools with source provenance",
   "keywords": [
     "pi-package",
