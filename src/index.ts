@@ -18,6 +18,8 @@ import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-c
 import { Text } from "@earendil-works/pi-tui";
 import { formatToolsList, showTools, type LoadedTool } from "./tools";
 
+let shownAtBoot = false;
+
 export default function (pi: ExtensionAPI): void {
   pi.registerMessageRenderer<{ tools: LoadedTool[] }>(
     "pi-loaded-tools",
@@ -39,7 +41,6 @@ export default function (pi: ExtensionAPI): void {
     },
   });
 
-  let shownAtBoot = false;
   pi.on("session_start", (_event, ctx: ExtensionContext) => {
     if (shownAtBoot) return;
     shownAtBoot = true;
