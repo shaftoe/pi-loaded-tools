@@ -59,7 +59,7 @@
     "validate": "bun run lint && bun run format && bun run check"
   },
   "devDependencies": {
-    "@alexanderfortin/semantic-release-keep-a-changelog": "0.2.2",
+    "@alexanderfortin/semantic-release-keep-a-changelog": "0.2.3",
     "@earendil-works/pi-ai": "0.75.3",
     "@earendil-works/pi-coding-agent": "0.75.3",
     "@earendil-works/pi-tui": "0.75.3",
@@ -75,7 +75,7 @@
     "@types/node": "25.9.1",
     "@typescript-eslint/eslint-plugin": "8.60.0",
     "@typescript-eslint/parser": "8.60.0",
-    "eslint": "10.4.0",
+    "eslint": "10.4.1",
     "eslint-config-prettier": "10.1.8",
     "prettier": "3.8.3",
     "prettier-plugin-organize-imports": "4.3.0",
