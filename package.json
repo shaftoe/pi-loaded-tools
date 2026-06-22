@@ -59,7 +59,7 @@
     "validate": "bun run lint && bun run format && bun run check"
   },
   "devDependencies": {
-    "@alexanderfortin/semantic-release-keep-a-changelog": "^0.4.2",
+    "@alexanderfortin/semantic-release-keep-a-changelog": "^0.4.3",
     "@earendil-works/pi-ai": "0.75.3",
     "@earendil-works/pi-coding-agent": "0.75.3",
     "@earendil-works/pi-tui": "0.75.3",
@@ -72,7 +72,7 @@
     "@semantic-release/release-notes-generator": "14.1.1",
     "@sinclair/typebox": "0.34.49",
     "@types/bun": "1.3.14",
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.0.0",
     "@typescript-eslint/eslint-plugin": "^8.61.1",
     "@typescript-eslint/parser": "^8.61.1",
     "eslint": "^10.5.0",
